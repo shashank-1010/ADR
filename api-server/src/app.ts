@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
@@ -36,12 +36,8 @@ const frontendBuildPath = path.join(__dirname, "../../adr-shield/dist");
 app.use(express.static(frontendBuildPath));
 
 // SPA fallback: serve index.html for all non-API routes
-app.get("*", (req, res) => {
-  if (!req.path.startsWith("/api")) {
-    res.sendFile(path.join(frontendBuildPath, "index.html"));
-  } else {
-    res.status(404).json({ error: "API endpoint not found" });
-  }
+app.use((req: Request, res: Response) => {
+  res.sendFile(path.join(frontendBuildPath, "index.html"));
 });
 
 export default app;
