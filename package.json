@@ -1,0 +1,22 @@
+{
+  "name": "adr-shield-root",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ADR Shield - Adverse Drug Reaction Management System",
+  "scripts": {
+    "build": "node build.mjs",
+    "build:frontend": "cd adr-shield && npm run build",
+    "build:backend": "cd api-server && npm run build",
+    "start": "cd api-server && npm start",
+    "install-deps": "npm install && cd adr-shield && npm install && cd ../api-server && npm install && cd ..",
+    "dev": "concurrently \"cd adr-shield && npm run dev\" \"cd api-server && npm run dev\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines": {
+    "node": "18.x || 20.x"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}

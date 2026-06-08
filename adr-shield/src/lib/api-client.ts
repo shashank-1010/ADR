@@ -1,10 +1,14 @@
 /**
  * api-client.ts  —  local replacement for @workspace/api-client-react
- * Talks to the Express backend at http://localhost:3001/api
+ * Talks to the Express backend at http://localhost:3001/api (dev) or same origin/api (prod)
  */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-const BASE = "http://localhost:3001/api";
+// Use same origin in production, localhost:3001 in development
+const BASE = 
+  typeof window !== "undefined" && window.location.hostname === "localhost"
+    ? "http://localhost:3001/api"
+    : "/api";
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {

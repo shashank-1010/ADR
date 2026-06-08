@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: adr-shield
+    runtime: node
+    buildCommand: npm install && npm run install-deps && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000

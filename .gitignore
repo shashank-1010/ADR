@@ -8,6 +8,8 @@ yarn.lock
 dist/
 build/
 *.tsbuildinfo
+adr-shield/dist/
+api-server/dist/
 
 # Environment variables
 .env
@@ -30,3 +32,4 @@ Thumbs.db
 npm-debug.log*
 pnpm-debug.log*
 yarn-error.log*
+
