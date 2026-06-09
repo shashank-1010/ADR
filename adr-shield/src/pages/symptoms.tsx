@@ -1,205 +1,52 @@
 import React, { useState } from "react";
-import { usePredictDisease } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Activity, X, Plus, AlertCircle, AlertTriangle, Brain, Info } from "lucide-react";
+import { Activity, X, Plus, Brain, Info, AlertTriangle } from "lucide-react";
 import { MedicalDisclaimer } from "@/components/disclaimer";
 import { SeverityBadge } from "@/components/severity-badge";
-import { Progress } from "@/components/ui/progress";
+
+// Disease prediction based on symptoms only
+const DISEASE_DB = [
+  { disease: "Hypertension", symptoms: ["headache", "dizziness", "blurred vision", "chest pain"], confidence: 0.85, urgency: "medium", description: "Persistently elevated blood pressure readings.", action: "Monitor blood pressure; lifestyle modifications; consider antihypertensive medication." },
+  { disease: "Type 2 Diabetes", symptoms: ["increased thirst", "frequent urination", "fatigue", "blurred vision"], confidence: 0.82, urgency: "medium", description: "Insulin resistance with elevated blood glucose.", action: "Check HbA1c and fasting glucose; metformin; dietary counseling." },
+  { disease: "Acute Coronary Syndrome", symptoms: ["chest pain", "shortness of breath", "nausea", "sweating", "arm pain"], confidence: 0.78, urgency: "high", description: "Reduced blood flow to the heart muscle.", action: "Immediate ECG and cardiac enzymes; cardiology consult; possible PCI." },
+  { disease: "Pneumonia", symptoms: ["cough", "fever", "shortness of breath", "chest pain", "fatigue"], confidence: 0.75, urgency: "high", description: "Lung infection causing inflammation.", action: "Chest X-ray; antibiotics; oxygen if hypoxic." },
+  { disease: "Migraine", symptoms: ["headache", "nausea", "sensitivity to light", "aura", "vomiting"], confidence: 0.80, urgency: "low", description: "Severe headache with neurological symptoms.", action: "Triptans; NSAIDs; rest in dark room." },
+  { disease: "Gastroenteritis", symptoms: ["nausea", "vomiting", "diarrhea", "abdominal pain", "fever"], confidence: 0.72, urgency: "low", description: "Inflammation of stomach and intestines.", action: "Oral rehydration; antiemetics; supportive care." },
+  { disease: "Urinary Tract Infection", symptoms: ["frequent urination", "burning sensation", "lower abdominal pain", "fever"], confidence: 0.70, urgency: "low", description: "Bacterial infection of urinary tract.", action: "Urinalysis and culture; antibiotics; increased fluid intake." },
+  { disease: "Appendicitis", symptoms: ["right lower abdominal pain", "nausea", "vomiting", "fever", "loss of appetite"], confidence: 0.68, urgency: "high", description: "Inflammation of the appendix.", action: "Immediate surgical consult; CT scan; appendectomy." },
+  { disease: "Pulmonary Embolism", symptoms: ["sudden shortness of breath", "chest pain", "coughing blood", "rapid heart rate"], confidence: 0.65, urgency: "emergency", description: "Blood clot in pulmonary artery.", action: "Immediate CT angiography; anticoagulation; possible thrombolytics." },
+  { disease: "Stroke", symptoms: ["facial drooping", "arm weakness", "speech difficulty", "confusion", "vision changes"], confidence: 0.88, urgency: "emergency", description: "Brain damage due to interrupted blood supply.", action: "Immediate CT/MRI; thrombolytics if ischemic; blood pressure management." },
+];
 
 export default function SymptomsPredictor() {
-  const [symptomInput, setSymptomInput] = useState("");
   const [symptoms, setSymptoms] = useState<string[]>([]);
-  const [patientAge, setPatientAge] = useState<string>("");
+  const [input, setInput] = useState("");
+  const [predicted, setPredicted] = useState(false);
+  const [results, setResults] = useState<any[]>([]);
 
-  const predictDisease = usePredictDisease();
-
-  const handleAddSymptom = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && symptomInput.trim()) {
-      e.preventDefault();
-      if (!symptoms.includes(symptomInput.trim())) {
-        setSymptoms([...symptoms, symptomInput.trim()]);
-      }
-      setSymptomInput("");
-    }
+  const addSymptom = () => { if (input.trim() && !symptoms.includes(input.trim().toLowerCase())) { setSymptoms([...symptoms, input.trim().toLowerCase()]); setInput(""); } };
+  const removeSymptom = (s: string) => { setSymptoms(symptoms.filter(sym => sym !== s)); };
+  
+  const analyze = () => {
+    const matches = DISEASE_DB.map(disease => {
+      const matchCount = disease.symptoms.filter(s => symptoms.includes(s)).length;
+      const confidence = matchCount / disease.symptoms.length;
+      return { ...disease, confidence: Math.min(confidence + 0.3, 0.95), matchCount };
+    }).filter(d => d.matchCount > 0).sort((a, b) => b.confidence - a.confidence).slice(0, 5);
+    setResults(matches);
+    setPredicted(true);
   };
-
-  const handleAddBtn = () => {
-    if (symptomInput.trim() && !symptoms.includes(symptomInput.trim())) {
-      setSymptoms([...symptoms, symptomInput.trim()]);
-      setSymptomInput("");
-    }
-  };
-
-  const handleRemoveSymptom = (symptom: string) => {
-    setSymptoms(symptoms.filter(s => s !== symptom));
-  };
-
-  const handlePredict = () => {
-    if (symptoms.length === 0) return;
-    
-    predictDisease.mutate({
-      data: {
-        symptoms,
-        patientAge: patientAge ? parseInt(patientAge) : undefined
-      }
-    });
-  };
-
-  const result = predictDisease.data;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Symptom Predictor</h1>
-        <p className="text-slate-500 mt-1">AI-assisted differential diagnosis based on reported clinical symptoms.</p>
-      </div>
-
+    <div className="space-y-6">
+      <div><h1 className="text-3xl font-bold tracking-tight text-gray-900">Symptom Predictor</h1><p className="text-gray-500 mt-1">AI-assisted differential diagnosis based on reported clinical symptoms.</p></div>
       <MedicalDisclaimer />
-
       <div className="grid gap-6 md:grid-cols-12">
-        <Card className="md:col-span-5 shadow-sm h-fit">
-          <CardHeader>
-            <CardTitle>Clinical Presentation</CardTitle>
-            <CardDescription>Enter patient symptoms and context.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label>Patient Age (Optional)</Label>
-              <Input 
-                type="number" 
-                placeholder="e.g. 45" 
-                value={patientAge}
-                onChange={(e) => setPatientAge(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-3">
-              <Label>Presenting Symptoms</Label>
-              <div className="flex gap-2">
-                <Input 
-                  placeholder="e.g. chronic headache, nausea..." 
-                  value={symptomInput}
-                  onChange={(e) => setSymptomInput(e.target.value)}
-                  onKeyDown={handleAddSymptom}
-                />
-                <Button variant="secondary" onClick={handleAddBtn} type="button">Add</Button>
-              </div>
-              <p className="text-xs text-slate-500">Press enter to add multiple symptoms.</p>
-            </div>
-
-            {symptoms.length > 0 && (
-              <div className="space-y-2 pt-2">
-                <div className="flex flex-wrap gap-2">
-                  {symptoms.map((symptom, idx) => (
-                    <div key={idx} className="flex items-center gap-1 bg-slate-100 text-slate-800 px-3 py-1.5 rounded-md text-sm font-medium border border-slate-200">
-                      {symptom}
-                      <button 
-                        onClick={() => handleRemoveSymptom(symptom)}
-                        className="ml-1 hover:bg-slate-200 rounded-full p-0.5 text-slate-500"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-          <CardFooter>
-            <Button 
-              className="w-full" 
-              onClick={handlePredict} 
-              disabled={symptoms.length === 0 || predictDisease.isPending}
-            >
-              {predictDisease.isPending ? "Generating Differential..." : "Analyze Symptoms"}
-            </Button>
-          </CardFooter>
-        </Card>
-
-        <div className="md:col-span-7 space-y-6">
-          {predictDisease.isPending ? (
-            <Card className="shadow-sm border-dashed border-2 animate-pulse bg-slate-50/50">
-              <CardContent className="py-16 text-center space-y-4">
-                <Brain className="h-12 w-12 text-primary/40 mx-auto animate-pulse" />
-                <p className="text-slate-500 font-medium">Running diagnostic model...</p>
-              </CardContent>
-            </Card>
-          ) : result ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-slate-900">Differential Diagnosis</h2>
-                <span className="text-sm text-slate-500">{result.predictions.length} matches found</span>
-              </div>
-              
-              {result.predictions.map((prediction, idx) => (
-                <Card key={idx} className={`shadow-sm overflow-hidden border-l-4 ${
-                  prediction.urgencyLevel === 'emergency' || prediction.urgencyLevel === 'high' 
-                    ? 'border-l-red-500' 
-                    : prediction.urgencyLevel === 'medium' 
-                      ? 'border-l-amber-500' 
-                      : 'border-l-primary'
-                }`}>
-                  <CardHeader className="pb-3 bg-slate-50/50 border-b">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg">{prediction.disease}</CardTitle>
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <SeverityBadge severity={prediction.urgencyLevel} />
-                        <span className="text-xs font-semibold text-slate-500">{(prediction.confidence * 100).toFixed(1)}% match</span>
-                      </div>
-                    </div>
-                    <div className="mt-2 h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full rounded-full ${
-                          prediction.confidence > 0.8 ? 'bg-primary' : 
-                          prediction.confidence > 0.5 ? 'bg-primary/70' : 'bg-primary/40'
-                        }`} 
-                        style={{ width: `${prediction.confidence * 100}%` }}
-                      />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-4 space-y-4">
-                    <p className="text-sm text-slate-700">{prediction.description}</p>
-                    
-                    <div className="bg-slate-50 rounded-md p-3 border border-slate-100">
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Recommended Action</h4>
-                      <p className="text-sm font-medium text-slate-800">{prediction.recommendedAction}</p>
-                    </div>
-
-                    {prediction.medicationConflicts && prediction.medicationConflicts.length > 0 && (
-                      <div className="flex items-start gap-2 text-sm bg-red-50 text-red-800 p-3 rounded-md border border-red-100">
-                        <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                        <div>
-                          <span className="font-semibold block mb-1">Contraindicated Medications:</span>
-                          <span className="opacity-90">{prediction.medicationConflicts.join(", ")}</span>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-
-              {result.analysisNotes && (
-                <Card className="bg-slate-50 border-slate-200 shadow-none">
-                  <CardContent className="p-4 flex gap-3">
-                    <Info className="h-5 w-5 text-slate-400 shrink-0" />
-                    <p className="text-sm text-slate-600">{result.analysisNotes}</p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          ) : (
-            <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-slate-400 bg-slate-50 border border-dashed rounded-lg">
-              <Brain className="h-12 w-12 mb-4 text-slate-300" />
-              <p className="text-lg font-medium text-slate-600">Awaiting Symptoms</p>
-              <p className="text-sm mt-1 max-w-sm text-center">Add patient symptoms to generate a differential diagnosis.</p>
-            </div>
-          )}
-        </div>
+        <Card className="md:col-span-5 shadow-sm"><CardHeader><CardTitle>Clinical Presentation</CardTitle><CardDescription>Enter patient symptoms for differential diagnosis.</CardDescription></CardHeader><CardContent className="space-y-6"><div className="space-y-3"><Label>Presenting Symptoms</Label><div className="flex gap-2"><Input placeholder="e.g. headache, fever, nausea..." value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addSymptom()} /><Button variant="secondary" onClick={addSymptom}>Add</Button></div><p className="text-xs text-gray-500">Enter symptoms one by one</p></div>{symptoms.length > 0 && (<div className="flex flex-wrap gap-2">{symptoms.map((s, i) => (<div key={i} className="flex items-center gap-1 bg-gray-100 text-gray-800 px-3 py-1.5 rounded-md text-sm"><span>{s}</span><button onClick={() => removeSymptom(s)} className="ml-1 hover:bg-gray-200 rounded-full p-0.5"><X className="h-3 w-3" /></button></div>))}</div>)}</CardContent><CardFooter><Button className="w-full" onClick={analyze} disabled={symptoms.length === 0}>Generate Differential Diagnosis</Button></CardFooter></Card>
+        <div className="md:col-span-7 space-y-6">{predicted && results.length > 0 ? (<div className="space-y-4"><h2 className="text-xl font-bold text-gray-900">Differential Diagnosis</h2><div className="space-y-3">{results.map((pred, idx) => (<Card key={idx} className={`shadow-sm overflow-hidden border-l-4 ${pred.urgency === 'emergency' ? 'border-l-red-600' : pred.urgency === 'high' ? 'border-l-orange-500' : pred.urgency === 'medium' ? 'border-l-amber-500' : 'border-l-blue-500'}`}><CardHeader className="pb-3 bg-gray-50 border-b"><div className="flex justify-between"><div><CardTitle className="text-lg">{pred.disease}</CardTitle></div><div className="flex flex-col items-end gap-1"><SeverityBadge severity={pred.urgency} /><span className="text-xs font-semibold text-gray-500">{(pred.confidence * 100).toFixed(0)}% match</span></div></div><div className="mt-2 h-1.5 w-full bg-gray-200 rounded-full overflow-hidden"><div className="h-full bg-blue-600 rounded-full" style={{ width: `${pred.confidence * 100}%` }} /></div></CardHeader><CardContent className="pt-4 space-y-3"><p className="text-sm text-gray-700">{pred.description}</p><div className="bg-blue-50 rounded-md p-3 border border-blue-100"><h4 className="text-xs font-semibold uppercase text-blue-700 mb-1">Recommended Action</h4><p className="text-sm font-medium text-gray-800">{pred.action}</p></div><div className="text-xs text-gray-500"><span className="font-semibold">Matching symptoms:</span> {pred.symptoms.filter((s: string) => symptoms.includes(s)).join(", ")}</div></CardContent></Card>))}</div></div>) : predicted ? (<Card><CardContent className="p-8 text-center"><p className="text-gray-500">No matching conditions found. Please add more symptoms.</p></CardContent></Card>) : (<div className="h-full min-h-[400px] flex flex-col items-center justify-center text-gray-400 bg-gray-50 border border-dashed rounded-lg"><Brain className="h-12 w-12 mb-4 text-gray-300" /><p className="text-lg font-medium text-gray-600">Awaiting Symptoms</p><p className="text-sm text-center">Add patient symptoms to generate differential diagnosis.</p></div>)}</div>
       </div>
     </div>
   );
